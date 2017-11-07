@@ -4,20 +4,19 @@ function plugin(UIkit) {
         return;
     }
 
-    var { util, mixin } = UIkit;
-    var {$, doc, fastdom, flipPosition, isTouch, isWithin, pointerDown, pointerEnter, pointerLeave, toJQuery} = util;
+    var {util, mixin} = UIkit;
+    var {append, attr, doc, fastdom, flipPosition, includes, isTouch, isVisible, matches, on, pointerDown, pointerEnter, pointerLeave, remove, within} = util;
 
-    var active;
+    var actives = [];
 
     UIkit.component('tooltip', {
 
         attrs: true,
 
-        mixins: [mixin.toggable, mixin.position],
+        mixins: [mixin.container, mixin.togglable, mixin.position],
 
         props: {
             delay: Number,
-            container: Boolean,
             title: String
         },
 
@@ -28,16 +27,11 @@ function plugin(UIkit) {
             animation: ['uk-animation-scale-up'],
             duration: 100,
             cls: 'uk-active',
-            clsPos: 'uk-tooltip',
-            container: true,
-        },
-
-        init() {
-            this.container = this.container === true && UIkit.container || this.container && toJQuery(this.container);
+            clsPos: 'uk-tooltip'
         },
 
         connected() {
-            fastdom.mutate(() => this.$el.removeAttr('title').attr('aria-expanded', false));
+            fastdom.mutate(() => attr(this.$el, {title: null, 'aria-expanded': false}));
         },
 
         disconnected() {
@@ -48,38 +42,35 @@ function plugin(UIkit) {
 
             show() {
 
-                if (active === this) {
+                if (includes(actives, this)) {
                     return;
                 }
 
-                if (active) {
-                    active.hide();
-                }
+                actives.forEach(active => active.hide());
+                actives.push(this);
 
-                active = this;
-
-                doc.on(`click.${this.$options.name}`, e => {
-                    if (!isWithin(e.target, this.$el)) {
-                        this.hide();
-                    }
-                });
+                this._unbind = on(doc, 'click', e => !within(e.target, this.$el) && this.hide());
 
                 clearTimeout(this.showTimer);
 
-                this.tooltip = $(`<div class="${this.clsPos}" aria-hidden="true"><div class="${this.clsPos}-inner">${this.title}</div></div>`).appendTo(this.container);
+                this.tooltip = append(this.container, `<div class="${this.clsPos}" aria-hidden><div class="${this.clsPos}-inner">${this.title}</div></div>`);
 
-                this.$el.attr('aria-expanded', true);
+                attr(this.$el, 'aria-expanded', true);
 
                 this.positionAt(this.tooltip, this.$el);
+
                 this.origin = this.getAxis() === 'y' ? `${flipPosition(this.dir)}-${this.align}` : `${this.align}-${flipPosition(this.dir)}`;
 
                 this.showTimer = setTimeout(() => {
+
                     this.toggleElement(this.tooltip, true);
 
                     this.hideTimer = setInterval(() => {
-                        if (!this.$el.is(':visible')) {
+
+                        if (!isVisible(this.$el)) {
                             this.hide();
                         }
+
                     }, 150);
 
                 }, this.delay);
@@ -87,36 +78,42 @@ function plugin(UIkit) {
 
             hide() {
 
-                if (this.$el.is('input') && this.$el[0] === document.activeElement) {
+                var index = actives.indexOf(this);
+
+                if (!~index || matches(this.$el, 'input') && this.$el === doc.activeElement) {
                     return;
                 }
 
-                active = active !== this && active || false;
+                actives.splice(index, 1);
 
                 clearTimeout(this.showTimer);
                 clearInterval(this.hideTimer);
-                this.$el.attr('aria-expanded', false);
+                attr(this.$el, 'aria-expanded', false);
                 this.toggleElement(this.tooltip, false);
-                this.tooltip && this.tooltip.remove();
+                this.tooltip && remove(this.tooltip);
                 this.tooltip = false;
-                doc.off(`click.${this.$options.name}`);
+                this._unbind();
 
             }
 
         },
 
         events: {
+
             [`focus ${pointerEnter} ${pointerDown}`](e) {
                 if (e.type !== pointerDown || !isTouch(e)) {
                     this.show();
                 }
             },
+
             'blur': 'hide',
+
             [pointerLeave](e) {
                 if (!isTouch(e)) {
                     this.hide()
                 }
             }
+
         }
 
     });

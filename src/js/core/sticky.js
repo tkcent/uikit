@@ -1,5 +1,5 @@
 import { Class } from '../mixin/index';
-import { $, Animation, isNumeric, isString, offsetTop, query, requestAnimationFrame } from '../util/index';
+import { $, addClass, after, Animation, assign, attr, css, docEl, hasClass, height, isNumeric, isString, isVisible, noop, offset, query, remove, removeClass, replaceClass, requestAnimationFrame, toFloat, toggleClass, trigger, win, within } from '../util/index';
 
 export default function (UIkit) {
 
@@ -17,7 +17,9 @@ export default function (UIkit) {
             clsActive: String,
             clsInactive: String,
             clsFixed: String,
-            widthElement: 'jQuery',
+            clsBelow: String,
+            selTarget: String,
+            widthElement: 'query',
             showOnUp: Boolean,
             media: 'media',
             target: Number
@@ -31,10 +33,20 @@ export default function (UIkit) {
             clsActive: 'uk-active',
             clsInactive: '',
             clsFixed: 'uk-sticky-fixed',
+            clsBelow: 'uk-sticky-below',
+            selTarget: '',
             widthElement: false,
             showOnUp: false,
             media: false,
             target: false
+        },
+
+        computed: {
+
+            selTarget({selTarget}, $el) {
+                return selTarget && $(selTarget, $el) || $el;
+            }
+
         },
 
         connected() {
@@ -43,7 +55,7 @@ export default function (UIkit) {
             this.widthElement = this.$props.widthElement || this.placeholder;
 
             if (!this.isActive) {
-                this.$el.addClass(this.clsInactive);
+                this.hide();
             }
         },
 
@@ -52,32 +64,31 @@ export default function (UIkit) {
             if (this.isActive) {
                 this.isActive = false;
                 this.hide();
-                this.$el.removeClass(this.clsInactive);
+                removeClass(this.$el, this.clsInactive);
             }
 
-            this.placeholder.remove();
+            remove(this.placeholder);
             this.placeholder = null;
             this.widthElement = null;
         },
 
         ready() {
 
-            if (!(this.target && location.hash && window.pageYOffset > 0)) {
+            if (!(this.target && location.hash && win.pageYOffset > 0)) {
                 return;
             }
 
-            var target = query(location.hash);
+            var target = $(location.hash);
 
             if (target) {
                 requestAnimationFrame(() => {
 
-                    var top = offsetTop(target),
-                        elTop = offsetTop(this.$el),
-                        elHeight = this.$el[0].offsetHeight,
-                        elBottom = elTop + elHeight;
+                    var top = offset(target).top,
+                        elTop = offset(this.$el).top,
+                        elHeight = this.$el.offsetHeight;
 
-                    if (elBottom >= top && elTop <= top + target[0].offsetHeight) {
-                        window.scrollTo(0, top - elHeight - this.target - this.offset);
+                    if (elTop + elHeight >= top && elTop <= top + target.offsetHeight) {
+                        win.scrollTo(0, top - elHeight - this.target - this.offset);
                     }
 
                 });
@@ -85,26 +96,56 @@ export default function (UIkit) {
 
         },
 
+        events: [
+
+            {
+                name: 'active',
+
+                self: true,
+
+                handler() {
+                    replaceClass(this.selTarget, this.clsInactive, this.clsActive);
+                }
+
+            },
+
+            {
+                name: 'inactive',
+
+                self: true,
+
+                handler() {
+                    replaceClass(this.selTarget, this.clsActive, this.clsInactive);
+                }
+
+            }
+
+        ],
+
         update: [
 
             {
 
                 write() {
 
-                    var outerHeight = this.$el[0].offsetHeight, el;
+                    var placeholder = this.placeholder,
+                        outerHeight = (this.isActive ? placeholder : this.$el).offsetHeight, el;
 
-                    this.placeholder
-                        .css('height', this.$el.css('position') !== 'absolute' ? outerHeight : '')
-                        .css(this.$el.css(['marginTop', 'marginBottom', 'marginLeft', 'marginRight']));
+                    css(placeholder, assign(
+                        {height: css(this.$el, 'position') !== 'absolute' ? outerHeight : ''},
+                        css(this.$el, ['marginTop', 'marginBottom', 'marginLeft', 'marginRight'])
+                    ));
 
-                    if (!document.documentElement.contains(this.placeholder[0])) {
-                        this.placeholder.insertAfter(this.$el).attr('hidden', true);
+                    if (!within(placeholder, docEl)) {
+                        after(this.$el, placeholder);
+                        attr(placeholder, 'hidden', '');
                     }
 
-                    this.width = this.widthElement.attr('hidden', null)[0].offsetWidth;
-                    this.widthElement.attr('hidden', !this.isActive);
+                    attr(this.widthElement, 'hidden', null);
+                    this.width = this.widthElement.offsetWidth;
+                    attr(this.widthElement, 'hidden', this.isActive ? null : '');
 
-                    this.topOffset = offsetTop(this.isActive ? this.placeholder : this.$el);
+                    this.topOffset = offset(this.isActive ? placeholder : this.$el).top;
                     this.bottomOffset = this.topOffset + outerHeight;
 
                     ['top', 'bottom'].forEach(prop => {
@@ -117,18 +158,18 @@ export default function (UIkit) {
 
                         if (isNumeric(this[prop])) {
 
-                            this[prop] = this[`${prop}Offset`] + parseFloat(this[prop]);
+                            this[prop] = this[`${prop}Offset`] + toFloat(this[prop]);
 
                         } else {
 
                             if (isString(this[prop]) && this[prop].match(/^-?\d+vh$/)) {
-                                this[prop] = window.innerHeight * parseFloat(this[prop]) / 100;
+                                this[prop] = height(win) * toFloat(this[prop]) / 100;
                             } else {
 
-                                el = this[prop] === true ? this.$el.parent() : query(this[prop], this.$el);
+                                el = this[prop] === true ? this.$el.parentNode : query(this[prop], this.$el);
 
                                 if (el) {
-                                    this[prop] = offsetTop(el) + el[0].offsetHeight;
+                                    this[prop] = offset(el).top + el.offsetHeight;
                                 }
 
                             }
@@ -137,9 +178,9 @@ export default function (UIkit) {
 
                     });
 
-                    this.top = Math.max(parseFloat(this.top), this.topOffset) - this.offset;
+                    this.top = Math.max(toFloat(this.top), this.topOffset) - this.offset;
                     this.bottom = this.bottom && this.bottom - outerHeight;
-                    this.inactive = this.media && !window.matchMedia(this.media).matches;
+                    this.inactive = this.media && !win.matchMedia(this.media).matches;
 
                     if (this.isActive) {
                         this.update();
@@ -153,20 +194,22 @@ export default function (UIkit) {
             {
 
                 read() {
-                    this.offsetTop = offsetTop(this.$el)
+                    this.offsetTop = offset(this.$el).top;
+                    this.scroll = win.pageYOffset;
+                    this.visible = isVisible(this.$el);
                 },
 
                 write({dir} = {}) {
 
-                    var scroll = window.pageYOffset;
+                    var scroll = this.scroll;
 
-                    if (scroll < 0 || !this.$el.is(':visible') || this.disabled || this.showOnUp && !dir) {
+                    if (scroll < 0 || !this.visible || this.disabled || this.showOnUp && !dir) {
                         return;
                     }
 
                     if (this.inactive
                         || scroll < this.top
-                        || this.showOnUp && (scroll <= this.top || dir ==='down' || dir === 'up' && !this.isActive && scroll <= this.bottomOffset)
+                        || this.showOnUp && (scroll <= this.top || dir === 'down' || dir === 'up' && !this.isActive && scroll <= this.bottomOffset)
                     ) {
 
                         if (!this.isActive) {
@@ -175,8 +218,9 @@ export default function (UIkit) {
 
                         this.isActive = false;
 
-                        if (this.animation && this.bottomOffset < this.offsetTop) {
-                            Animation.cancel(this.$el).then(() => Animation.out(this.$el, this.animation).then(() => this.hide()));
+                        if (this.animation && scroll > this.topOffset) {
+                            Animation.cancel(this.$el);
+                            Animation.out(this.$el, this.animation).then(() => this.hide(), noop);
                         } else {
                             this.hide();
                         }
@@ -187,10 +231,9 @@ export default function (UIkit) {
 
                     } else if (this.animation) {
 
-                        Animation.cancel(this.$el).then(() => {
-                            this.show();
-                            Animation.in(this.$el, this.animation);
-                        });
+                        Animation.cancel(this.$el);
+                        this.show();
+                        Animation.in(this.$el, this.animation).catch(noop);
 
                     } else {
                         this.show();
@@ -210,41 +253,51 @@ export default function (UIkit) {
 
                 this.isActive = true;
                 this.update();
-                this.$el.trigger('active');
-                this.placeholder.attr('hidden', null);
+                attr(this.placeholder, 'hidden', null);
 
             },
 
             hide() {
 
-                this.$el
-                    .addClass(this.clsInactive)
-                    .removeClass(this.clsFixed)
-                    .removeClass(this.clsActive)
-                    .css({position: '', top: '', width: ''})
-                    .trigger('inactive');
+                if (!this.isActive || hasClass(this.selTarget, this.clsActive)) {
+                    trigger(this.$el, 'inactive');
+                }
 
-                this.placeholder.attr('hidden', true);
+                removeClass(this.$el, this.clsFixed, this.clsBelow);
+                css(this.$el, {position: '', top: '', width: ''});
+                attr(this.placeholder, 'hidden', '');
 
             },
 
             update() {
 
-                var top = Math.max(0, this.offset), scroll = window.pageYOffset, active = scroll > this.top;
+                var top = Math.max(0, this.offset), active = this.scroll > this.top;
 
-                if (this.bottom && scroll > this.bottom - this.offset) {
-                    top = this.bottom - scroll;
+                if (this.bottom && this.scroll > this.bottom - this.offset) {
+                    top = this.bottom - this.scroll;
                 }
 
-                this.$el
-                    .css({
-                        position: 'fixed',
-                        top: `${top}px`,
-                        width: this.width
-                    })
-                    .addClass(this.clsFixed)
-                    .toggleClass(this.clsActive, active)
-                    .toggleClass(this.clsInactive, !active);
+                css(this.$el, {
+                    position: 'fixed',
+                    top: `${top}px`,
+                    width: this.width
+                });
+
+                if (hasClass(this.selTarget, this.clsActive)) {
+
+                    if (!active) {
+                        trigger(this.$el, 'inactive');
+                    }
+
+                } else {
+
+                    if (active) {
+                        trigger(this.$el, 'active');
+                    }
+                }
+
+                toggleClass(this.$el, this.clsBelow, this.scroll > this.bottomOffset);
+                addClass(this.$el, this.clsFixed);
 
             }
 

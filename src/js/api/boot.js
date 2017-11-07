@@ -1,10 +1,12 @@
-import { Observer, on, ready } from '../util/index';
+import { createEvent, doc, docEl, fastdom, hasAttr, Observer, on, ready } from '../util/index';
 
 export default function (UIkit) {
 
+    var {connect, disconnect} = UIkit;
+
     if (Observer) {
 
-        if (document.body) {
+        if (doc.body) {
 
             init();
 
@@ -12,58 +14,66 @@ export default function (UIkit) {
 
             (new Observer(function () {
 
-                if (document.body) {
+                if (doc.body) {
                     this.disconnect();
                     init();
                 }
 
-            })).observe(document.documentElement, {childList: true, subtree: true});
+            })).observe(docEl, {childList: true, subtree: true});
 
         }
 
     } else {
 
         ready(() => {
-            apply(document.body, UIkit.connect);
-            on(document.documentElement, 'DOMNodeInserted', e => apply(e.target, UIkit.connect));
-            on(document.documentElement, 'DOMNodeRemoved', e => apply(e.target, UIkit.disconnect));
+            apply(doc.body, connect);
+            on(docEl, 'DOMNodeInserted', e => apply(e.target, connect));
+            on(docEl, 'DOMNodeRemoved', e => apply(e.target, disconnect));
         });
 
     }
 
     function init() {
 
-        apply(document.body, UIkit.connect);
+        apply(doc.body, connect);
+
+        fastdom.flush();
 
         (new Observer(mutations =>
             mutations.forEach(({addedNodes, removedNodes, target}) => {
 
                 for (var i = 0; i < addedNodes.length; i++) {
-                    apply(addedNodes[i], UIkit.connect)
+                    apply(addedNodes[i], connect)
                 }
 
                 for (i = 0; i < removedNodes.length; i++) {
-                    apply(removedNodes[i], UIkit.disconnect)
+                    apply(removedNodes[i], disconnect)
                 }
 
-                UIkit.update('update', target, true);
+                UIkit.update(createEvent('update', true, false, {mutation: true}), target, true);
 
             })
-        )).observe(document.documentElement, {childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['href']});
+        )).observe(docEl, {
+            childList: true,
+            subtree: true,
+            characterData: true,
+            attributes: true,
+            attributeFilter: ['href']
+        });
 
         UIkit._initialized = true;
     }
 
     function apply(node, fn) {
 
-        if (node.nodeType !== Node.ELEMENT_NODE || node.hasAttribute('uk-no-boot')) {
+        if (node.nodeType !== 1 || hasAttr(node, 'uk-no-boot')) {
             return;
         }
 
         fn(node);
-        node = node.firstChild;
+        node = node.firstElementChild;
         while (node) {
-            var next = node.nextSibling;
+            var next = node.nextElementSibling;
             apply(node, fn);
             node = next;
         }

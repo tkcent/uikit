@@ -4,7 +4,7 @@ function plugin(UIkit) {
         return;
     }
 
-    var {$, each, pointerEnter, pointerLeave, Transition} = UIkit.util;
+    var {append, closest, css, each, pointerEnter, pointerLeave, remove, toFloat, Transition, trigger} = UIkit.util;
     var containers = {};
 
     UIkit.component('notification', {
@@ -19,38 +19,36 @@ function plugin(UIkit) {
             timeout: 5000,
             group: null,
             pos: 'top-center',
-            onClose: null,
-            clsClose: 'uk-notification-close'
+            clsClose: 'uk-notification-close',
+            clsMsg: 'uk-notification-message'
         },
 
         created() {
 
             if (!containers[this.pos]) {
-                containers[this.pos] = $(`<div class="uk-notification uk-notification-${this.pos}"></div>`).appendTo(UIkit.container);
+                containers[this.pos] = append(UIkit.container, `<div class="uk-notification uk-notification-${this.pos}"></div>`);
             }
 
-            this.$mount($(
-                `<div class="uk-notification-message${this.status ? ` uk-notification-message-${this.status}` : ''}">
+            var container = css(containers[this.pos], 'display', 'block');
+
+            this.$mount(append(container,
+                `<div class="${this.clsMsg}${this.status ? ` ${this.clsMsg}-${this.status}` : ''}">
                     <a href="#" class="${this.clsClose}" data-uk-close></a>
                     <div>${this.message}</div>
                 </div>`
-            ).appendTo(containers[this.pos].show())[0]);
+            ));
 
         },
 
         ready() {
 
-            var marginBottom = parseInt(this.$el.css('margin-bottom'), 10);
-
+            var marginBottom = toFloat(css(this.$el, 'marginBottom'));
             Transition.start(
-                this.$el.css({opacity: 0, marginTop: -1 * this.$el.outerHeight(), marginBottom: 0}),
+                css(this.$el, {opacity: 0, marginTop: -1 * this.$el.offsetHeight, marginBottom: 0}),
                 {opacity: 1, marginTop: 0, marginBottom}
             ).then(() => {
                 if (this.timeout) {
                     this.timer = setTimeout(this.close, this.timeout);
-                    this.$el
-                        .on(pointerEnter, () => clearTimeout(this.timer))
-                        .on(pointerLeave, () => this.timer = setTimeout(this.close, this.timeout));
                 }
             });
 
@@ -59,10 +57,22 @@ function plugin(UIkit) {
         events: {
 
             click(e) {
-                if ($(e.target).closest('a[href="#"]').length) {
+                if (closest(e.target, 'a[href="#"]')) {
                     e.preventDefault();
                 }
                 this.close();
+            },
+
+            [pointerEnter]() {
+                if (this.timer) {
+                    clearTimeout(this.timer);
+                }
+            },
+
+            [pointerLeave]() {
+                if (this.timeout) {
+                    this.timer = setTimeout(this.close, this.timeout);
+                }
             }
 
         },
@@ -71,13 +81,13 @@ function plugin(UIkit) {
 
             close(immediate) {
 
-                var remove = () => {
+                var removeFn = () => {
 
-                    this.onClose && this.onClose();
-                    this.$el.trigger('close', [this]).remove();
+                    trigger(this.$el, 'close', [this]);
+                    remove(this.$el);
 
-                    if (!containers[this.pos].children().length) {
-                        containers[this.pos].hide();
+                    if (!containers[this.pos].children.length) {
+                        css(containers[this.pos], 'display', 'none');
                     }
 
                 };
@@ -87,9 +97,13 @@ function plugin(UIkit) {
                 }
 
                 if (immediate) {
-                    remove();
+                    removeFn();
                 } else {
-                    Transition.start(this.$el, {opacity: 0, marginTop: -1 * this.$el.outerHeight(), marginBottom: 0}).then(remove)
+                    Transition.start(this.$el, {
+                        opacity: 0,
+                        marginTop: -1 * this.$el.offsetHeight,
+                        marginBottom: 0
+                    }).then(removeFn)
                 }
             }
 
@@ -98,7 +112,7 @@ function plugin(UIkit) {
     });
 
     UIkit.notification.closeAll = function (group, immediate) {
-        each(UIkit.instances, (_, component) => {
+        each(UIkit.instances, component => {
             if (component.$options.name === 'notification' && (!group || group === component.group)) {
                 component.close(immediate);
             }

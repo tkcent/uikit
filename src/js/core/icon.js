@@ -1,7 +1,8 @@
 import { Class } from '../mixin/index';
-import { $, extend, isRtl, promise, swap } from '../util/index';
+import { $, addClass, css, each, hasClass, isRtl, noop, parents, Promise, swap } from '../util/index';
 import closeIcon from '../../images/components/close-icon.svg';
 import closeLarge from '../../images/components/close-large.svg';
+import marker from '../../images/components/marker.svg';
 import navbarToggleIcon from '../../images/components/navbar-toggle-icon.svg';
 import overlayIcon from '../../images/components/overlay-icon.svg';
 import paginationNext from '../../images/components/pagination-next.svg';
@@ -22,6 +23,7 @@ export default function (UIkit) {
         icons = {
             spinner,
             totop,
+            marker,
             'close-icon': closeIcon,
             'close-large': closeLarge,
             'navbar-toggle-icon': navbarToggleIcon,
@@ -49,65 +51,31 @@ export default function (UIkit) {
 
         props: ['icon'],
 
-        defaults: {exclude: ['id', 'style', 'class', 'src']},
+        defaults: {exclude: ['id', 'style', 'class', 'src', 'icon']},
 
         init() {
-            this.$el.addClass('uk-icon');
+            addClass(this.$el, 'uk-icon');
 
             if (isRtl) {
                 this.icon = swap(swap(this.icon, 'left', 'right'), 'previous', 'next');
             }
         },
 
-        update: {
-
-            read() {
-
-                if (this.delay) {
-                    var icon = this.getIcon();
-
-                    if (icon) {
-                        this.delay(icon);
-                    }
-                }
-            },
-
-            events: ['load']
-
+        disconnected() {
+            delete this.delay;
         },
 
         methods: {
 
             getSvg() {
 
-                var icon = this.getIcon();
+                var icon = getIcon(this.icon);
 
                 if (!icon) {
-
-                    if (document.readyState !== 'complete') {
-                        return promise(resolve => {
-                            this.delay = resolve;
-                        });
-                    }
-
-                    return promise.reject('Icon not found.');
-
+                    return Promise.reject('Icon not found.');
                 }
 
-                return promise.resolve(icon);
-            },
-
-            getIcon() {
-
-                if (!icons[this.icon]) {
-                    return null;
-                }
-
-                if (!parsed[this.icon]) {
-                    parsed[this.icon] = this.parse(icons[this.icon]);
-                }
-
-                return parsed[this.icon];
+                return Promise.resolve(icon);
             }
 
         }
@@ -115,6 +83,7 @@ export default function (UIkit) {
     }));
 
     [
+        'marker',
         'navbar-toggle-icon',
         'overlay-icon',
         'pagination-previous',
@@ -128,9 +97,9 @@ export default function (UIkit) {
     ].forEach(name => registerComponent(name, {
 
         init() {
-            this.$el.addClass('uk-slidenav');
+            addClass(this.$el, 'uk-slidenav');
 
-            if (this.$el.hasClass('uk-slidenav-large')) {
+            if (hasClass(this.$el, 'uk-slidenav-large')) {
                 this.icon += '-large';
             }
         }
@@ -140,9 +109,9 @@ export default function (UIkit) {
     registerComponent('search-icon', {
 
         init() {
-            if (this.$el.hasClass('uk-search-icon') && this.$el.parents('.uk-search-large').length) {
+            if (hasClass(this.$el, 'uk-search-icon') && parents(this.$el, '.uk-search-large').length) {
                 this.icon = 'search-large';
-            } else if (this.$el.parents('.uk-search-navbar').length) {
+            } else if (parents(this.$el, '.uk-search-navbar').length) {
                 this.icon = 'search-navbar';
             }
         }
@@ -152,7 +121,7 @@ export default function (UIkit) {
     registerComponent('close', {
 
         init() {
-            this.icon = `close-${this.$el.hasClass('uk-close-large') ? 'large' : 'icon'}`;
+            this.icon = `close-${hasClass(this.$el, 'uk-close-large') ? 'large' : 'icon'}`;
         }
 
     });
@@ -160,23 +129,25 @@ export default function (UIkit) {
     registerComponent('spinner', {
 
         connected() {
-
-            this.height = this.width = this.$el.width();
-
-            this.svg.then(svg => {
-
-                var circle = $(svg).find('circle'),
-                    diameter = Math.floor(this.width / 2);
-
-                svg.setAttribute('viewBox', `0 0 ${this.width} ${this.width}`);
-
-                circle.attr({cx: diameter, cy: diameter, r: diameter - parseFloat(circle.css('stroke-width') || 0)});
-            });
+            this.svg.then(svg => this.ratio !== 1 && css($('circle', svg), 'stroke-width', 1 / this.ratio), noop);
         }
 
     });
 
-    UIkit.icon.add = added => extend(icons, added);
+    UIkit.icon.add = added => {
+        Object.keys(added).forEach(name => {
+            icons[name] = added[name];
+            delete parsed[name];
+        });
+
+        if (UIkit._initialized) {
+            each(UIkit.instances, component => {
+                if (component.$options.name === 'icon') {
+                    component.$reset();
+                }
+            });
+        }
+    };
 
     function registerComponent(name, mixin) {
 
@@ -191,6 +162,19 @@ export default function (UIkit) {
             }
 
         }));
+    }
+
+    function getIcon(icon) {
+
+        if (!icons[icon]) {
+            return null;
+        }
+
+        if (!parsed[icon]) {
+            parsed[icon] = $(icons[icon].trim());
+        }
+
+        return parsed[icon];
     }
 
 }

@@ -10,6 +10,7 @@
 @import "description-list.scss";
 @import "table.scss";
 @import "icon.scss";
+@import "form-range.scss";
 @import "form.scss";
 @import "button.scss";
 
@@ -23,6 +24,7 @@
 // Common
 @import "close.scss";
 @import "spinner.scss";
+@import "marker.scss";
 @import "totop.scss";
 @import "alert.scss";
 @import "badge.scss";
@@ -41,24 +43,27 @@
 @import "tab.scss";
 @import "slidenav.scss";
 @import "dotnav.scss";
+@import "thumbnav.scss";
 
 // JavaScript
 @import "accordion.scss";
 @import "drop.scss";
 @import "dropdown.scss";
 @import "modal.scss";
+@import "lightbox.scss";
 @import "sticky.scss";
 @import "offcanvas.scss";
 
-// Optional components
+// Additional
 @import "iconnav.scss";
 @import "notification.scss";
 @import "tooltip.scss";
 @import "placeholder.scss";
 @import "progress.scss";
 @import "sortable.scss";
+@import "countdown.scss";
 
-// Utility
+// Utilities
 @import "animation.scss";
 @import "width.scss";
 @import "text.scss";

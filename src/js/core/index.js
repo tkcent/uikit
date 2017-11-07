@@ -1,4 +1,4 @@
-import { animationstart, getStyle, on, requestAnimationFrame, toMs, win } from '../util/index';
+import { animationstart, css, doc, fastdom, on, toMs, win } from '../util/index';
 
 import Accordion from './accordion';
 import Alert from './alert';
@@ -12,6 +12,7 @@ import HeightMatch from './height-match';
 import HeightViewport from './height-viewport';
 import Hover from './hover';
 import Icon from './icon';
+import Leader from './leader';
 import Margin from './margin';
 import Modal from './modal';
 import Nav from './nav';
@@ -26,54 +27,29 @@ import Svg from './svg';
 import Switcher from './switcher';
 import Tab from './tab';
 import Toggle from './toggle';
-import Leader from './leader';
+import Video from './video';
 
 export default function (UIkit) {
 
-    var scroll = null, dir, ticking, resizing, started = 0;
+    var scroll = 0, started = 0;
 
-    win
-        .on('load', UIkit.update)
-        .on('resize', e => {
-            if (!resizing) {
-                requestAnimationFrame(() => {
-                    UIkit.update(e);
-                    resizing = false;
-                });
-                resizing = true;
-            }
-        })
-        .on('scroll', e => {
+    on(win, 'load resize', UIkit.update);
+    on(win, 'scroll', e => {
+        e.dir = scroll < win.pageYOffset ? 'down' : 'up';
+        scroll = win.pageYOffset;
+        UIkit.update(e);
+        fastdom.flush();
+    });
 
-            if (scroll === null) {
-                scroll = 0;
-            }
-
-            if (scroll === window.pageYOffset) {
-                return;
-            }
-
-            dir = scroll < window.pageYOffset;
-            scroll = window.pageYOffset;
-            if (!ticking) {
-                requestAnimationFrame(() => {
-                    e.dir = dir ? 'down' : 'up';
-                    UIkit.update(e);
-                    ticking = false;
-                });
-                ticking = true;
-            }
-        });
-
-    on(document, animationstart, ({target}) => {
-        if ((getStyle(target, 'animationName') || '').match(/^uk-.*(left|right)/)) {
+    animationstart && on(doc, animationstart, ({target}) => {
+        if ((css(target, 'animationName') || '').match(/^uk-.*(left|right)/)) {
             started++;
-            document.body.style.overflowX = 'hidden';
+            doc.body.style.overflowX = 'hidden';
             setTimeout(() => {
                 if (!--started) {
-                    document.body.style.overflowX = '';
+                    doc.body.style.overflowX = '';
                 }
-            }, toMs(getStyle(target, 'animationDuration')) + 100);
+            }, toMs(css(target, 'animationDuration')) + 100);
         }
     }, true);
 
@@ -81,6 +57,7 @@ export default function (UIkit) {
     UIkit.use(Toggle);
     UIkit.use(Accordion);
     UIkit.use(Alert);
+    UIkit.use(Video);
     UIkit.use(Cover);
     UIkit.use(Drop);
     UIkit.use(Dropdown);

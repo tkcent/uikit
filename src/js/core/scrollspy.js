@@ -1,4 +1,4 @@
-import { $, isInView } from '../util/index';
+import { $$, addClass, attr, css, filter, isInView, removeClass, toggleClass, trigger } from '../util/index';
 
 export default function (UIkit) {
 
@@ -27,14 +27,10 @@ export default function (UIkit) {
             inViewClass: 'uk-scrollspy-inview'
         },
 
-        init() {
-            this.$emitSync();
-        },
-
         computed: {
 
-            elements() {
-                return this.target && $(this.target, this.$el) || this.$el;
+            elements({target}, $el) {
+                return target && $$(target, $el) || [$el];
             }
 
         },
@@ -45,7 +41,7 @@ export default function (UIkit) {
 
                 write() {
                     if (this.hidden) {
-                        this.elements.filter(`:not(.${this.inViewClass})`).css('visibility', 'hidden');
+                        css(filter(this.elements, `:not(.${this.inViewClass})`), 'visibility', 'hidden');
                     }
                 }
 
@@ -54,10 +50,10 @@ export default function (UIkit) {
             {
 
                 read() {
-                    this.elements.each((_, el) => {
+                    this.elements.forEach(el => {
 
                         if (!el._scrollspy) {
-                            var cls = $(el).attr('uk-scrollspy-class');
+                            var cls = attr(el, 'uk-scrollspy-class');
                             el._scrollspy = {toggles: cls && cls.split(',') || this.cls};
                         }
 
@@ -70,27 +66,34 @@ export default function (UIkit) {
 
                     var index = this.elements.length === 1 ? 1 : 0;
 
-                    this.elements.each((_, el) => {
+                    this.elements.forEach((el, i) => {
 
-                        var $el = $(el);
-
-                        var data = el._scrollspy;
+                        var data = el._scrollspy, cls = data.toggles[i] || data.toggles[0];
 
                         if (data.show) {
 
                             if (!data.inview && !data.timer) {
 
-                                data.timer = setTimeout(() => {
+                                var show = () => {
+                                    css(el, 'visibility', '');
+                                    addClass(el, this.inViewClass);
+                                    toggleClass(el, cls);
 
-                                    $el.css('visibility', '')
-                                        .addClass(this.inViewClass)
-                                        .toggleClass(data.toggles[0])
-                                        .trigger('inview');
+                                    trigger(el, 'inview');
+
+                                    this.$update();
 
                                     data.inview = true;
                                     delete data.timer;
+                                };
 
-                                }, this.delay * index++);
+                                if (this.delay && index) {
+                                    data.timer = setTimeout(show, this.delay * index);
+                                } else {
+                                    show();
+                                }
+
+                                index++;
 
                             }
 
@@ -103,17 +106,19 @@ export default function (UIkit) {
                                     delete data.timer;
                                 }
 
-                                $el.removeClass(this.inViewClass)
-                                    .toggleClass(data.toggles[0])
-                                    .css('visibility', this.hidden ? 'hidden' : '')
-                                    .trigger('outview');
+                                css(el, 'visibility', this.hidden ? 'hidden' : '');
+                                removeClass(el, this.inViewClass);
+                                toggleClass(el, cls);
+
+                                trigger(el, 'outview');
+
+                                this.$update();
 
                                 data.inview = false;
+
                             }
 
                         }
-
-                        data.toggles.reverse();
 
                     });
 

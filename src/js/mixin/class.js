@@ -1,7 +1,9 @@
+import { addClass } from '../util/index';
+
 export default {
 
     init() {
-        this.$el.addClass(this.$name);
+        addClass(this.$el, this.$name);
     }
 
 }

@@ -1,4 +1,4 @@
-import { Dimensions } from '../util/index';
+import { addClass, Dimensions, height, isVisible, width } from '../util/index';
 
 export default function (UIkit) {
 
@@ -7,18 +7,25 @@ export default function (UIkit) {
         props: ['width', 'height'],
 
         init() {
-            this.$el.addClass('uk-responsive-width');
+            addClass(this.$el, 'uk-responsive-width');
         },
 
         update: {
 
+            read() {
+
+                this.dim = isVisible(this.$el) && this.width && this.height
+                    ? {width: width(this.$el.parentNode), height: this.height}
+                    : false;
+
+            },
+
             write() {
-                if (this.$el.is(':visible') && this.width && this.height) {
-                    this.$el.height(Dimensions.fit(
-                        {height: this.height, width: this.width},
-                        {width: this.$el.parent().width(), height: this.height || this.$el.height()}
-                    )['height']);
+
+                if (this.dim) {
+                    height(this.$el, Dimensions.contain({height: this.height, width: this.width}, this.dim).height);
                 }
+
             },
 
             events: ['load', 'resize']
