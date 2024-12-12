@@ -23,12 +23,15 @@ for customizing with very little requirements.
  * To submit bug reports and feature suggestions, or to track changes:
    https://drupal.org/project/issues/uikit
 
+ * UIKit Documentation - https://www.getuikit.com/
 
 REQUIREMENTS
 ------------
 
-There are no requirements to using UIkit.
+Currently requires a patch to Drupal core to allow the @ symbol in class
+names configured in layout regions/blocks.
 
+https://github.com/backdrop/backdrop/pull/4901
 
 RECOMMENDATIONS
 ------------
