@@ -1,0 +1,12 @@
+.password-toggle-wrapper {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+}
+
+.password-toggle {
+  position: absolute;
+  top: -2em;
+  right: 0;
+  font-size: 80%;
+}

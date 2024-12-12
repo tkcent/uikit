@@ -1,0 +1,69 @@
+/* Add-ons for webform prefixes and suffixes */
+.uk-input-group {
+  position: relative;
+  display: table;
+  border-collapse: separate;
+}
+.uk-input-group input {
+  display: table-cell;
+  position: relative;
+  width: 100%;
+}
+.uk-input-prefix,
+.uk-input-suffix {
+  display: table-cell;
+  white-space: nowrap;
+  vertical-align: middle;
+  border: 1px solid #e5e5e5;
+  padding: 7px 12px;
+}
+.uk-input-prefix {
+  border-right: 0;
+}
+.uk-input-suffix {
+  border-left: 0;
+}
+.uk-section-primary:not(.uk-preserve-color) .uk-input-prefix,
+.uk-section-primary:not(.uk-preserve-color) .uk-input-suffix,
+.uk-section-secondary:not(.uk-preserve-color) .uk-input-prefix,
+.uk-section-secondary:not(.uk-preserve-color) .uk-input-suffix {
+  background-color: rgba(255,255,255,.1);
+  color: rgba(255,255,255,.7);
+  background-clip: padding-box;
+  border-color: rgba(255,255,255,.2);
+}
+
+
+input[type="file"] {
+  xdisplay: none;
+}
+
+.form-file {
+  border: 1px solid #ccc;
+  display: inline-block;
+  padding: 6px 12px;
+  cursor: pointer;
+}
+
+
+.uk-navbar-container > .uk-container {
+  padding-left: 15px;
+  padding-right: 15px;
+}
+
+@media (min-width: 640px) {
+  .uk-navbar-container > .uk-container {
+    padding-left: 30px;
+    padding-right: 30px;
+  }
+}
+
+@media (min-width: 960px) {
+  .uk-navbar-container > .uk-container {
+    padding-left: 40px;
+    padding-right: 40px;
+  }
+}
+
+
+/* Styles specific to IBBWELD */
